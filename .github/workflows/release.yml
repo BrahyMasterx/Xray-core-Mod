@@ -1,35 +1,26 @@
-name: Build and Release
+name: Build Windows 64-bit
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
   push:
   pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
-  check-assets:
-    runs-on: ubuntu-latest
-
   build:
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Include amd64 on all platforms.
         goos: [windows]
         goarch: [amd64]
-        patch-assetname: [""]
-      fail-fast: false
-
-    runs-on: ubuntu-latest
     env:
       GOOS: ${{ matrix.goos }}
       GOARCH: ${{ matrix.goarch }}
-      GOARM: ${{ matrix.goarm }}
       CGO_ENABLED: 0
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -39,45 +30,22 @@ jobs:
       - name: Get project dependencies
         run: go mod download
 
-      - name: Build Xray
+      - name: Build Xray for Windows AMD64
         run: |
           mkdir -p build_assets
           COMMID=$(git describe --always --dirty)
-          if [[ ${GOOS} == 'windows' ]]; then
-            echo 'Building Xray for Windows...'
-            go build -o build_assets/xray.exe -trimpath -buildvcs=false -gcflags="all=-l=4" -ldflags="-X github.com/xtls/xray-core/core.build=${COMMID} -s -w -buildid=" -v ./main
-            # The line below is for without running conhost.exe version. Commented for not being used. Provided for reference.
-            # go build -o build_assets/wxray.exe -trimpath -buildvcs=false -gcflags="all=-l=4" -ldflags="-H windowsgui -X github.com/xtls/xray-core/core.build=${COMMID} -s -w -buildid=" -v ./main
+          go build -o build_assets/xray.exe -trimpath -buildvcs=false -gcflags="all=-l=4" -ldflags="-X github.com/xtls/xray-core/core.build=${COMMID} -s -w -buildid=" -v ./main
 
-
-
-      - name: Create ZIP archive
-        if: github.event_name == 'release'
-        shell: bash
+      - name: Package ZIP archive
         run: |
-          pushd build_assets || exit 1
-          touch -mt $(date +%Y01010000) *
-          zip -9vr ../Xray-${{ env.ASSET_NAME }}.zip .
-          popd || exit 1
-          FILE=./Xray-${{ env.ASSET_NAME }}.zip
-          DGST=$FILE.dgst
-          for METHOD in {"md5","sha1","sha256","sha512"}
-          do
-            openssl dgst -$METHOD $FILE | sed 's/([^)]*)//g' >>$DGST
-          done
+          pushd build_assets
+          zip -9r ../xray-windows-amd64.zip xray.exe
+          popd
 
-      - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./Xray-${{ env.ASSET_NAME }}.zip*
-          tag: ${{ github.ref }}
-          file_glob: true
-
-      - name: Upload files to Artifacts
+      - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Xray-${{ env.ASSET_NAME }}
+          name: xray-windows-amd64
           path: |
-            ./build_assets/*
+            ./build_assets/xray.exe
+            ./xray-windows-amd64.zip
