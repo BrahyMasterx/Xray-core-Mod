@@ -36,11 +36,6 @@ jobs:
           COMMID=$(git describe --always --dirty)
           go build -o build_assets/xray.exe -trimpath -buildvcs=false -gcflags="all=-l=4" -ldflags="-X github.com/xtls/xray-core/core.build=${COMMID} -s -w -buildid=" -v ./main
 
-      - name: Package ZIP archive
-        run: |
-          pushd build_assets
-          zip -9r ../xray-windows-amd64.zip xray.exe
-          popd
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
