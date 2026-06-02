@@ -696,11 +696,8 @@ func (c *TLSConfig) Build() (proto.Message, error) {
 	}
 	config.RejectUnknownSni = c.RejectUnknownSNI
 	config.MasterKeyLog = c.MasterKeyLog
-
 	config.AllowInsecure = c.AllowInsecure
-	if config.AllowInsecure {
-		errors.PrintDeprecatedFeatureWarning("allowInsecure", "pinnedPeerCertSha256")
-	}
+
 	if c.PinnedPeerCertSha256 != "" {
 		for v := range strings.SplitSeq(c.PinnedPeerCertSha256, ",") {
 			v = strings.TrimSpace(v)
